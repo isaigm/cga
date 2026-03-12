@@ -96,6 +96,7 @@ begin
         end loop;
     end process;
 
+
      process (reg_child_attacks, reg_child_chrom)
         variable cnt: natural;
     begin
@@ -126,6 +127,9 @@ begin
     port map (clk => clk, reset => reset, enable => s_en_sipo, in_bit => s_sipo_bit, valid => s_valid_sipo_output, output_data => s_sipo_output);
 
     process (clk)
+        variable mult_idx     : unsigned(40-1 downto 0);
+        variable mult_val     : unsigned(40-1 downto 0);
+
         variable mutation_idx : integer;
         variable mutation_val : unsigned(W_QUEENS-1 downto 0);
         variable attack_idx   : integer;
@@ -194,13 +198,14 @@ begin
                             current_op            <= OP_CROSS_LATCH_CHROM;
 
                         when OP_MUT =>
-                            mutation_idx := to_integer(unsigned(s_sipo_output(W_QUEENS-1 downto 0)));
-                            mutation_val := unsigned(s_sipo_output(W_QUEENS*2-1 downto W_QUEENS));
+                            mult_idx := unsigned(s_sipo_output(20-1 downto 0)) * to_unsigned(N_QUEENS, 20);
+                            mult_val := unsigned(s_sipo_output(40-1 downto 20)) * to_unsigned(N_QUEENS, 20);
 
-                            if mutation_idx < N_QUEENS and mutation_val < N_QUEENS then
-                                r_chromosome(mutation_idx) <= mutation_val;
-                                s_fitness <= "111111";
-                            end if;
+                            mutation_idx := to_integer(mult_idx(40-1 downto 20));
+                            mutation_val := resize(mult_val(40-1 downto 20), W_QUEENS);
+
+                            r_chromosome(mutation_idx) <= mutation_val;
+                            s_fitness <= "111111";
 
                             current_op <= OP_IDLE;
 
