@@ -74,12 +74,15 @@ fn generate_comparator_file() -> Result<()> {
     file.write_all(content.as_bytes())
 }
 
-
 fn generate_cell_file() -> Result<()> {
     let mut file = File::create("vhdl/cell.vhd")?;
 
     let worst_fitness = "1".repeat(W_FITNESS as usize);
     let sipo_bits = N_QUEENS * W_QUEENS;
+
+    let half_sipo = sipo_bits / 2;
+    let mult_bits = half_sipo * 2;
+
     let max_attacks = (N_QUEENS * (N_QUEENS - 1)) / 2;
     let max_fit_val = (1 << W_FITNESS) - 1;
 
@@ -182,6 +185,7 @@ fn generate_cell_file() -> Result<()> {
                 end loop;
             end process;
 
+
              process (reg_child_attacks, reg_child_chrom)
                 variable cnt: natural;
             begin
@@ -212,6 +216,9 @@ fn generate_cell_file() -> Result<()> {
             port map (clk => clk, reset => reset, enable => s_en_sipo, in_bit => s_sipo_bit, valid => s_valid_sipo_output, output_data => s_sipo_output);
 
             process (clk)
+                variable mult_idx     : unsigned({mult_bits}-1 downto 0);
+                variable mult_val     : unsigned({mult_bits}-1 downto 0);
+
                 variable mutation_idx : integer;
                 variable mutation_val : unsigned(W_QUEENS-1 downto 0);
                 variable attack_idx   : integer;
@@ -280,13 +287,14 @@ fn generate_cell_file() -> Result<()> {
                                     current_op            <= OP_CROSS_LATCH_CHROM;
 
                                 when OP_MUT =>
-                                    mutation_idx := to_integer(unsigned(s_sipo_output(W_QUEENS-1 downto 0)));
-                                    mutation_val := unsigned(s_sipo_output(W_QUEENS*2-1 downto W_QUEENS));
+                                    mult_idx := unsigned(s_sipo_output({half_sipo}-1 downto 0)) * to_unsigned(N_QUEENS, {half_sipo});
+                                    mult_val := unsigned(s_sipo_output({mult_bits}-1 downto {half_sipo})) * to_unsigned(N_QUEENS, {half_sipo});
 
-                                    if mutation_idx < N_QUEENS and mutation_val < N_QUEENS then
-                                        r_chromosome(mutation_idx) <= mutation_val;
-                                        s_fitness <= "{worst_fit}";
-                                    end if;
+                                    mutation_idx := to_integer(mult_idx({mult_bits}-1 downto {half_sipo}));
+                                    mutation_val := resize(mult_val({mult_bits}-1 downto {half_sipo}), W_QUEENS);
+
+                                    r_chromosome(mutation_idx) <= mutation_val;
+                                    s_fitness <= "{worst_fit}";
 
                                     current_op <= OP_IDLE;
 
@@ -306,17 +314,19 @@ fn generate_cell_file() -> Result<()> {
     worst_fit = worst_fitness,
     sipo_max = sipo_bits,
     max_att = max_attacks,
-    max_val = max_fit_val
+    max_val = max_fit_val,
+    half_sipo = half_sipo,
+    mult_bits = mult_bits
     };
 
     file.write_all(content.as_bytes())
 }
 
+
 fn generate_cga_file(rows: i32, cols: i32) -> Result<()> {
     let mut file = File::create("vhdl/cga.vhd")?;
     let mut rng = rand::rng();
 
-    // 1. Declaración de señales
     let mut signals = String::new();
     for r in 0..rows {
         for c in 0..cols {
@@ -349,7 +359,6 @@ fn generate_cga_file(rows: i32, cols: i32) -> Result<()> {
     let padding_zeros = "0".repeat((8 - W_QUEENS) as usize);
     let perfect_fitness = "0".repeat(W_FITNESS as usize);
 
-    // 3. Ensamblar el archivo VHDL
     let content = formatdoc! {r#"
         library IEEE;
         use IEEE.STD_LOGIC_1164.ALL;
