@@ -9,10 +9,10 @@ A Full-Stack Embedded Systems project featuring a custom EDA tool written in **R
 The project includes a Rust-based frontend that listens via UART to display the hardware-accelerated solution on a visual chess board in real-time.
 
 ## 🧠 Architectural Highlights
-* **SIMD Architecture:** A central FSM orchestrates a 2D grid of independent processing cores (cells), evaluating the entire population simultaneously in a single clock cycle.
+* **Massively Parallel Spatial Architecture:** A central FSM orchestrates a 2D grid of 36 independent, custom-built processing cores (cells). Instead of relying on instruction sets (like SIMD), the algorithm is hardwired into the silicon, evaluating the entire population simultaneously.
 * **Toroidal Mesh Topology:** Cells are connected to their North, South, East, and West neighbors wrapping around the edges (Pac-Man style), ensuring continuous genetic diversity without boundary edge-cases.
-* **Deep Pipelining:** The critical path (Fitness Evaluation $\rightarrow$ Tournament Selection $\rightarrow$ Crossover $\rightarrow$ Child Evaluation) is heavily pipelined to achieve **Timing Closure at 100 MHz**.
-* **Hardware PRNG:** Each cell contains a local 32-bit LFSR initialized with a unique, deterministically generated seed from Rust, ensuring perfect spatial entropy without global bottlenecks.
+* **Hardware Unrolling & Multi-cycle Datapath:** The critical path is managed by a highly optimized multi-cycle FSM. The $O(N^2)$ fitness evaluation (checking all row and diagonal attacks) is fully unrolled into pure combinational logic, allowing the hardware to calculate all queen collisions in a **single clock cycle** while successfully achieving Timing Closure at 100 MHz.
+* **Distributed Hardware PRNG:** Each cell contains a local 32-bit LFSR initialized with a unique, deterministically generated seed from Rust, ensuring perfect spatial entropy without the routing congestion (high fan-out) of a global random number generator.
 
 ## 📂 Repository Structure
 
