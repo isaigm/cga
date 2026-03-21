@@ -68,5 +68,5 @@ cargo run --release
 Press the "Start" button on your FPGA. The hardware will compute the solution at 100 MHz, transmit the winning chromosome via UART, and the Rust frontend will render the 10x10 chessboard with the safe queen positions.
 
 
-<img width="1002" height="790" alt="Captura de pantalla 2026-03-17 212047" src="https://github.com/user-attachments/assets/6954727c-68eb-4ec3-8e9b-092e490960a4" />
+<img width="1002" height="790" alt="Captura de pantalla 2026-03-21 090330" src="https://github.com/user-attachments/assets/f014b049-196e-4af9-b4b2-8539a976f732" />
 
