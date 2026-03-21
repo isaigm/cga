@@ -45,16 +45,13 @@ architecture Behavioral of cell is
     signal semi1_chrom, semi2_chrom, best_neighbor_chrom, comb_best_parent_chrom : queen_chrom_t;
 
     signal reg_best_parent_chrom : queen_chrom_t := (others => (others => '0'));
-    signal reg_sipo_mask         : std_logic_vector(40-1 downto 0) := (others => '0');
+
+    signal lfsr_reg              : std_logic_vector(63 downto 0) := x"ACE1ACE1" & CELL_SEED;
+    signal reg_lfsr_mask         : std_logic_vector(N_QUEENS-1 downto 0) := (others => '0');
 
     signal reg_child_attacks     : std_logic_vector(45-1 downto 0) := (others => '0');
 
-    signal s_en_sipo           : std_logic := '0';
-    signal s_sipo_bit          : std_logic := '0';
-    signal s_valid_sipo_output : std_logic := '0';
-    signal s_sipo_output       : std_logic_vector(40-1 downto 0);
-
-    type op_mode_type is (OP_IDLE, OP_INIT, OP_CROSS_WAIT_SIPO, OP_CROSS_LATCH_CHROM, OP_CROSS_CALC_ATTACKS, OP_CROSS_EVAL, OP_MUT);
+    type op_mode_type is (OP_IDLE, OP_INIT, OP_CROSS_LATCH_MASK, OP_CROSS_LATCH_CHILD, OP_CROSS_CALC_ATTACKS, OP_CROSS_WAIT_EVAL, OP_CROSS_EVAL, OP_MUT);
     signal current_op : op_mode_type := OP_IDLE;
 
 begin
@@ -85,17 +82,16 @@ begin
     final_neighbor_comp: entity work.cell_comparator port map (fit_a => semi1_fit, chrom_a => semi1_chrom, fit_b => semi2_fit, chrom_b => semi2_chrom, fit_out => best_neighbor_fit, chrom_out => best_neighbor_chrom);
     elitism_comp: entity work.cell_comparator port map (fit_a => s_fitness, chrom_a => r_chromosome, fit_b => best_neighbor_fit, chrom_b => best_neighbor_chrom, fit_out => comb_best_parent_fit, chrom_out => comb_best_parent_chrom);
 
-    process(r_chromosome, reg_best_parent_chrom, reg_sipo_mask)
+    process(r_chromosome, reg_best_parent_chrom, reg_lfsr_mask)
     begin
         for i in 0 to N_QUEENS - 1 loop
-            if reg_sipo_mask(i) = '1' then
+            if reg_lfsr_mask(i) = '1' then
                 child_chrom(i) <= reg_best_parent_chrom(i);
             else
                 child_chrom(i) <= r_chromosome(i);
             end if;
         end loop;
     end process;
-
 
      process (reg_child_attacks, reg_child_chrom)
         variable cnt: natural;
@@ -120,39 +116,53 @@ begin
         child_fitness <= to_unsigned(cnt, 6);
     end process;
 
-    lfsr: entity work.lfsr generic map(SEED => CELL_SEED)
-    port map(clk => clk, reset => reset, output_bit => s_sipo_bit);
-
-    sipo: entity work.sipo generic map(N => 40)
-    port map (clk => clk, reset => reset, enable => s_en_sipo, in_bit => s_sipo_bit, valid => s_valid_sipo_output, output_data => s_sipo_output);
-
     process (clk)
-        variable mult_idx     : unsigned(40-1 downto 0);
-        variable mult_val     : unsigned(40-1 downto 0);
-
+        variable mult_idx     : unsigned(31 downto 0);
+        variable mult_val     : unsigned(31 downto 0);
         variable mutation_idx : integer;
         variable mutation_val : unsigned(W_QUEENS-1 downto 0);
+        variable temp_val     : unsigned(W_QUEENS-1 downto 0);
         variable attack_idx   : integer;
     begin
         if rising_edge(clk) then
+
+            lfsr_reg <= lfsr_reg(62 downto 0) & (lfsr_reg(63) xor lfsr_reg(62) xor lfsr_reg(60) xor lfsr_reg(59));
+
             if reset = '1' then
                 r_chromosome          <= (others => (others => '0'));
                 s_fitness             <= "111111";
                 reg_best_parent_chrom <= (others => (others => '0'));
-                reg_sipo_mask         <= (others => '0');
+                reg_lfsr_mask         <= (others => '0');
                 reg_child_attacks     <= (others => '0');
                 reg_child_chrom       <= (others => (others => '0'));
-                s_en_sipo             <= '0';
                 current_op            <= OP_IDLE;
+                lfsr_reg              <= x"ACE1ACE1" & CELL_SEED;
             else
-                if s_en_sipo = '0' and current_op = OP_IDLE then
-                    if en_init = '1' then s_en_sipo <= '1'; current_op <= OP_INIT;
-                    elsif en_crossover = '1' then s_en_sipo <= '1'; current_op <= OP_CROSS_WAIT_SIPO;
-                    elsif en_mutation = '1' then s_en_sipo <= '1'; current_op <= OP_MUT;
+                if current_op = OP_IDLE then
+                    if en_init = '1' then current_op <= OP_INIT;
+                    elsif en_crossover = '1' then current_op <= OP_CROSS_LATCH_MASK;
+                    elsif en_mutation = '1' then current_op <= OP_MUT;
                     end if;
                 end if;
 
-                if current_op = OP_CROSS_LATCH_CHROM then
+                if current_op = OP_INIT then
+                    for i in 0 to N_QUEENS - 1 loop
+                        temp_val := unsigned(lfsr_reg(i*W_QUEENS + W_QUEENS - 1 downto i*W_QUEENS));
+                        if temp_val >= N_QUEENS then
+                            temp_val := temp_val - to_unsigned(N_QUEENS, W_QUEENS);
+                        end if;
+                        r_chromosome(i) <= temp_val;
+                    end loop;
+                    current_op <= OP_IDLE;
+                end if;
+
+                if current_op = OP_CROSS_LATCH_MASK then
+                    reg_best_parent_chrom <= comb_best_parent_chrom;
+                    reg_lfsr_mask         <= lfsr_reg(N_QUEENS-1 downto 0);
+                    current_op            <= OP_CROSS_LATCH_CHILD;
+                end if;
+
+                if current_op = OP_CROSS_LATCH_CHILD then
                     reg_child_chrom <= child_chrom;
                     current_op <= OP_CROSS_CALC_ATTACKS;
                 end if;
@@ -172,6 +182,10 @@ begin
                         end loop;
                     end loop;
 
+                    current_op <= OP_CROSS_WAIT_EVAL;
+                end if;
+
+                if current_op = OP_CROSS_WAIT_EVAL then
                     current_op <= OP_CROSS_EVAL;
                 end if;
 
@@ -183,34 +197,21 @@ begin
                     current_op <= OP_IDLE;
                 end if;
 
-                if s_valid_sipo_output = '1' then
-                    s_en_sipo <= '0';
-                    case current_op is
-                        when OP_INIT =>
-                            for i in 0 to N_QUEENS - 1 loop
-                                r_chromosome(i) <= unsigned(s_sipo_output(i*W_QUEENS + W_QUEENS - 1 downto i*W_QUEENS));
-                            end loop;
-                            current_op <= OP_IDLE;
+                if current_op = OP_MUT then
+                    mult_idx := unsigned(lfsr_reg(15 downto 0)) * to_unsigned(N_QUEENS, 16);
+                    mult_val := unsigned(lfsr_reg(31 downto 16)) * to_unsigned(N_QUEENS, 16);
 
-                        when OP_CROSS_WAIT_SIPO =>
-                            reg_best_parent_chrom <= comb_best_parent_chrom;
-                            reg_sipo_mask         <= s_sipo_output;
-                            current_op            <= OP_CROSS_LATCH_CHROM;
+                    mutation_idx := to_integer(mult_idx(31 downto 16));
+                    temp_val     := resize(mult_val(31 downto 16), W_QUEENS);
 
-                        when OP_MUT =>
-                            mult_idx := unsigned(s_sipo_output(20-1 downto 0)) * to_unsigned(N_QUEENS, 20);
-                            mult_val := unsigned(s_sipo_output(40-1 downto 20)) * to_unsigned(N_QUEENS, 20);
+                    if temp_val >= N_QUEENS then
+                        temp_val := temp_val - to_unsigned(N_QUEENS, W_QUEENS);
+                    end if;
 
-                            mutation_idx := to_integer(mult_idx(40-1 downto 20));
-                            mutation_val := resize(mult_val(40-1 downto 20), W_QUEENS);
+                    r_chromosome(mutation_idx) <= temp_val;
+                    s_fitness <= "111111";
 
-                            r_chromosome(mutation_idx) <= mutation_val;
-                            s_fitness <= "111111";
-
-                            current_op <= OP_IDLE;
-
-                        when others => null;
-                    end case;
+                    current_op <= OP_IDLE;
                 end if;
             end if;
         end if;
