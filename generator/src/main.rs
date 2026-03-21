@@ -1,11 +1,10 @@
-use rand::{RngExt};
+use rand::{Rng, RngExt};
 use std::fs::{self, File};
 use std::io::{Write, Result};
 use indoc::formatdoc;
 
-
-const ROWS: i32 = 6;
-const COLS: i32 = 6;
+const ROWS: i32 = 5;
+const COLS: i32 = 5;
 const N_QUEENS: i32 = 10;
 const W_QUEENS: i32 = 4;
 const W_FITNESS: i32 = 6;
@@ -78,11 +77,6 @@ fn generate_cell_file() -> Result<()> {
     let mut file = File::create("vhdl/cell.vhd")?;
 
     let worst_fitness = "1".repeat(W_FITNESS as usize);
-    let sipo_bits = N_QUEENS * W_QUEENS;
-
-    let half_sipo = sipo_bits / 2;
-    let mult_bits = half_sipo * 2;
-
     let max_attacks = (N_QUEENS * (N_QUEENS - 1)) / 2;
     let max_fit_val = (1 << W_FITNESS) - 1;
 
@@ -134,16 +128,13 @@ fn generate_cell_file() -> Result<()> {
             signal semi1_chrom, semi2_chrom, best_neighbor_chrom, comb_best_parent_chrom : queen_chrom_t;
 
             signal reg_best_parent_chrom : queen_chrom_t := (others => (others => '0'));
-            signal reg_sipo_mask         : std_logic_vector({sipo_max}-1 downto 0) := (others => '0');
+
+            signal lfsr_reg              : std_logic_vector(63 downto 0) := x"ACE1ACE1" & CELL_SEED;
+            signal reg_lfsr_mask         : std_logic_vector(N_QUEENS-1 downto 0) := (others => '0');
 
             signal reg_child_attacks     : std_logic_vector({max_att}-1 downto 0) := (others => '0');
 
-            signal s_en_sipo           : std_logic := '0';
-            signal s_sipo_bit          : std_logic := '0';
-            signal s_valid_sipo_output : std_logic := '0';
-            signal s_sipo_output       : std_logic_vector({sipo_max}-1 downto 0);
-
-            type op_mode_type is (OP_IDLE, OP_INIT, OP_CROSS_WAIT_SIPO, OP_CROSS_LATCH_CHROM, OP_CROSS_CALC_ATTACKS, OP_CROSS_EVAL, OP_MUT);
+            type op_mode_type is (OP_IDLE, OP_INIT, OP_CROSS_LATCH_MASK, OP_CROSS_LATCH_CHILD, OP_CROSS_CALC_ATTACKS, OP_CROSS_WAIT_EVAL, OP_CROSS_EVAL, OP_MUT);
             signal current_op : op_mode_type := OP_IDLE;
 
         begin
@@ -174,17 +165,16 @@ fn generate_cell_file() -> Result<()> {
             final_neighbor_comp: entity work.cell_comparator port map (fit_a => semi1_fit, chrom_a => semi1_chrom, fit_b => semi2_fit, chrom_b => semi2_chrom, fit_out => best_neighbor_fit, chrom_out => best_neighbor_chrom);
             elitism_comp: entity work.cell_comparator port map (fit_a => s_fitness, chrom_a => r_chromosome, fit_b => best_neighbor_fit, chrom_b => best_neighbor_chrom, fit_out => comb_best_parent_fit, chrom_out => comb_best_parent_chrom);
 
-            process(r_chromosome, reg_best_parent_chrom, reg_sipo_mask)
+            process(r_chromosome, reg_best_parent_chrom, reg_lfsr_mask)
             begin
                 for i in 0 to N_QUEENS - 1 loop
-                    if reg_sipo_mask(i) = '1' then
+                    if reg_lfsr_mask(i) = '1' then
                         child_chrom(i) <= reg_best_parent_chrom(i);
                     else
                         child_chrom(i) <= r_chromosome(i);
                     end if;
                 end loop;
             end process;
-
 
              process (reg_child_attacks, reg_child_chrom)
                 variable cnt: natural;
@@ -209,39 +199,53 @@ fn generate_cell_file() -> Result<()> {
                 child_fitness <= to_unsigned(cnt, {w_fit});
             end process;
 
-            lfsr: entity work.lfsr generic map(SEED => CELL_SEED)
-            port map(clk => clk, reset => reset, output_bit => s_sipo_bit);
-
-            sipo: entity work.sipo generic map(N => {sipo_max})
-            port map (clk => clk, reset => reset, enable => s_en_sipo, in_bit => s_sipo_bit, valid => s_valid_sipo_output, output_data => s_sipo_output);
-
             process (clk)
-                variable mult_idx     : unsigned({mult_bits}-1 downto 0);
-                variable mult_val     : unsigned({mult_bits}-1 downto 0);
-
+                variable mult_idx     : unsigned(31 downto 0);
+                variable mult_val     : unsigned(31 downto 0);
                 variable mutation_idx : integer;
                 variable mutation_val : unsigned(W_QUEENS-1 downto 0);
+                variable temp_val     : unsigned(W_QUEENS-1 downto 0);
                 variable attack_idx   : integer;
             begin
                 if rising_edge(clk) then
+
+                    lfsr_reg <= lfsr_reg(62 downto 0) & (lfsr_reg(63) xor lfsr_reg(62) xor lfsr_reg(60) xor lfsr_reg(59));
+
                     if reset = '1' then
                         r_chromosome          <= (others => (others => '0'));
                         s_fitness             <= "{worst_fit}";
                         reg_best_parent_chrom <= (others => (others => '0'));
-                        reg_sipo_mask         <= (others => '0');
+                        reg_lfsr_mask         <= (others => '0');
                         reg_child_attacks     <= (others => '0');
                         reg_child_chrom       <= (others => (others => '0'));
-                        s_en_sipo             <= '0';
                         current_op            <= OP_IDLE;
+                        lfsr_reg              <= x"ACE1ACE1" & CELL_SEED;
                     else
-                        if s_en_sipo = '0' and current_op = OP_IDLE then
-                            if en_init = '1' then s_en_sipo <= '1'; current_op <= OP_INIT;
-                            elsif en_crossover = '1' then s_en_sipo <= '1'; current_op <= OP_CROSS_WAIT_SIPO;
-                            elsif en_mutation = '1' then s_en_sipo <= '1'; current_op <= OP_MUT;
+                        if current_op = OP_IDLE then
+                            if en_init = '1' then current_op <= OP_INIT;
+                            elsif en_crossover = '1' then current_op <= OP_CROSS_LATCH_MASK;
+                            elsif en_mutation = '1' then current_op <= OP_MUT;
                             end if;
                         end if;
 
-                        if current_op = OP_CROSS_LATCH_CHROM then
+                        if current_op = OP_INIT then
+                            for i in 0 to N_QUEENS - 1 loop
+                                temp_val := unsigned(lfsr_reg(i*W_QUEENS + W_QUEENS - 1 downto i*W_QUEENS));
+                                if temp_val >= N_QUEENS then
+                                    temp_val := temp_val - to_unsigned(N_QUEENS, W_QUEENS);
+                                end if;
+                                r_chromosome(i) <= temp_val;
+                            end loop;
+                            current_op <= OP_IDLE;
+                        end if;
+
+                        if current_op = OP_CROSS_LATCH_MASK then
+                            reg_best_parent_chrom <= comb_best_parent_chrom;
+                            reg_lfsr_mask         <= lfsr_reg(N_QUEENS-1 downto 0);
+                            current_op            <= OP_CROSS_LATCH_CHILD;
+                        end if;
+
+                        if current_op = OP_CROSS_LATCH_CHILD then
                             reg_child_chrom <= child_chrom;
                             current_op <= OP_CROSS_CALC_ATTACKS;
                         end if;
@@ -261,6 +265,10 @@ fn generate_cell_file() -> Result<()> {
                                 end loop;
                             end loop;
 
+                            current_op <= OP_CROSS_WAIT_EVAL;
+                        end if;
+
+                        if current_op = OP_CROSS_WAIT_EVAL then
                             current_op <= OP_CROSS_EVAL;
                         end if;
 
@@ -272,34 +280,21 @@ fn generate_cell_file() -> Result<()> {
                             current_op <= OP_IDLE;
                         end if;
 
-                        if s_valid_sipo_output = '1' then
-                            s_en_sipo <= '0';
-                            case current_op is
-                                when OP_INIT =>
-                                    for i in 0 to N_QUEENS - 1 loop
-                                        r_chromosome(i) <= unsigned(s_sipo_output(i*W_QUEENS + W_QUEENS - 1 downto i*W_QUEENS));
-                                    end loop;
-                                    current_op <= OP_IDLE;
+                        if current_op = OP_MUT then
+                            mult_idx := unsigned(lfsr_reg(15 downto 0)) * to_unsigned(N_QUEENS, 16);
+                            mult_val := unsigned(lfsr_reg(31 downto 16)) * to_unsigned(N_QUEENS, 16);
 
-                                when OP_CROSS_WAIT_SIPO =>
-                                    reg_best_parent_chrom <= comb_best_parent_chrom;
-                                    reg_sipo_mask         <= s_sipo_output;
-                                    current_op            <= OP_CROSS_LATCH_CHROM;
+                            mutation_idx := to_integer(mult_idx(31 downto 16));
+                            temp_val     := resize(mult_val(31 downto 16), W_QUEENS);
 
-                                when OP_MUT =>
-                                    mult_idx := unsigned(s_sipo_output({half_sipo}-1 downto 0)) * to_unsigned(N_QUEENS, {half_sipo});
-                                    mult_val := unsigned(s_sipo_output({mult_bits}-1 downto {half_sipo})) * to_unsigned(N_QUEENS, {half_sipo});
+                            if temp_val >= N_QUEENS then
+                                temp_val := temp_val - to_unsigned(N_QUEENS, W_QUEENS);
+                            end if;
 
-                                    mutation_idx := to_integer(mult_idx({mult_bits}-1 downto {half_sipo}));
-                                    mutation_val := resize(mult_val({mult_bits}-1 downto {half_sipo}), W_QUEENS);
+                            r_chromosome(mutation_idx) <= temp_val;
+                            s_fitness <= "{worst_fit}";
 
-                                    r_chromosome(mutation_idx) <= mutation_val;
-                                    s_fitness <= "{worst_fit}";
-
-                                    current_op <= OP_IDLE;
-
-                                when others => null;
-                            end case;
+                            current_op <= OP_IDLE;
                         end if;
                     end if;
                 end if;
@@ -312,11 +307,8 @@ fn generate_cell_file() -> Result<()> {
     "#,
     w_fit = W_FITNESS,
     worst_fit = worst_fitness,
-    sipo_max = sipo_bits,
     max_att = max_attacks,
-    max_val = max_fit_val,
-    half_sipo = half_sipo,
-    mult_bits = mult_bits
+    max_val = max_fit_val
     };
 
     file.write_all(content.as_bytes())
@@ -351,11 +343,6 @@ fn generate_cga_file(rows: i32, cols: i32) -> Result<()> {
         }
     }
 
-    let sipo_cycles = N_QUEENS * W_QUEENS;
-    let init_wait_cycles = sipo_cycles + 1;
-    let cross_wait_cycles = sipo_cycles + 4;
-    let mut_wait_cycles = sipo_cycles + 1;
-
     let padding_zeros = "0".repeat((8 - W_QUEENS) as usize);
     let perfect_fitness = "0".repeat(W_FITNESS as usize);
 
@@ -385,9 +372,10 @@ fn generate_cga_file(rows: i32, cols: i32) -> Result<()> {
 
             type state_type is (S_IDLE, S_INIT, S_WAIT_INIT, S_CROSS, S_WAIT_CROSS, S_MUTATE, S_WAIT_MUT, S_DONE, S_TX_LOAD, S_TX_ACK, S_TX_WAIT);
             signal state : state_type := S_IDLE;
-            signal wait_cnt : integer range 0 to 63 := 0;
 
-            signal top_lfsr_bit : std_logic;
+            signal wait_cnt : integer range 0 to 7 := 0;
+
+            signal top_lfsr     : std_logic_vector(31 downto 0) := x"DEADBEEF";
             signal mut_prob_reg : std_logic_vector(2 downto 0) := "000";
 
             signal uart_start : std_logic := '0';
@@ -406,10 +394,6 @@ fn generate_cga_file(rows: i32, cols: i32) -> Result<()> {
             push_btn_reset: entity work.push_btn port map(clk => CLK100MHZ, btn => btnR, enabled => reset_clean);
             push_btn_start: entity work.push_btn port map(clk => CLK100MHZ, btn => btnL, enabled => start_clean);
 
-            top_rand: entity work.lfsr
-                generic map (SEED => x"DEADBEEF")
-                port map (clk => CLK100MHZ, reset => reset_clean, output_bit => top_lfsr_bit);
-
             uart_tx_inst: entity work.uart_tx
                 port map (
                     clk   => CLK100MHZ,
@@ -425,7 +409,8 @@ fn generate_cga_file(rows: i32, cols: i32) -> Result<()> {
             process (CLK100MHZ)
             begin
                 if rising_edge(CLK100MHZ) then
-                    mut_prob_reg <= mut_prob_reg(1 downto 0) & top_lfsr_bit;
+                    top_lfsr <= top_lfsr(30 downto 0) & (top_lfsr(31) xor top_lfsr(21) xor top_lfsr(1) xor top_lfsr(0));
+                    mut_prob_reg <= mut_prob_reg(1 downto 0) & top_lfsr(31);
 
                     if reset_clean = '1' then
                         state <= S_IDLE;
@@ -461,7 +446,7 @@ fn generate_cga_file(rows: i32, cols: i32) -> Result<()> {
                                 state <= S_WAIT_INIT;
 
                             when S_WAIT_INIT =>
-                                if wait_cnt = {init_wait_cycles} then
+                                if wait_cnt = 2 then
                                     state <= S_CROSS;
                                 else
                                     wait_cnt <= wait_cnt + 1;
@@ -473,7 +458,7 @@ fn generate_cga_file(rows: i32, cols: i32) -> Result<()> {
                                 state <= S_WAIT_CROSS;
 
                             when S_WAIT_CROSS =>
-                                if wait_cnt = {cross_wait_cycles} then
+                                if wait_cnt = 6 then
                                     if fit_0_0 = "{perf_fit}" then
                                         tx_idx <= 0;
                                         is_computing <= '0';
@@ -495,7 +480,7 @@ fn generate_cga_file(rows: i32, cols: i32) -> Result<()> {
                                 state <= S_WAIT_MUT;
 
                             when S_WAIT_MUT =>
-                                if wait_cnt = {mut_wait_cycles} then
+                                if wait_cnt = 2 then
                                     if fit_0_0 = "{perf_fit}" then
                                         tx_idx <= 0;
                                         is_computing <= '0';
@@ -555,9 +540,6 @@ fn generate_cga_file(rows: i32, cols: i32) -> Result<()> {
     "#,
     signals = signals,
     instances = instances,
-    init_wait_cycles = init_wait_cycles,
-    cross_wait_cycles = cross_wait_cycles,
-    mut_wait_cycles = mut_wait_cycles,
     w_fit = W_FITNESS,
     perf_fit = perfect_fitness,
     pad = padding_zeros,
