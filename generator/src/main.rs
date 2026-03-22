@@ -1,10 +1,10 @@
-use rand::{Rng, RngExt};
+use rand::{RngExt};
 use std::fs::{self, File};
 use std::io::{Write, Result};
 use indoc::formatdoc;
 
 const ROWS: i32 = 5;
-const COLS: i32 = 5;
+const COLS: i32 = 6;
 const N_QUEENS: i32 = 10;
 const W_QUEENS: i32 = 4;
 const W_FITNESS: i32 = 6;
@@ -287,10 +287,6 @@ fn generate_cell_file() -> Result<()> {
                             mutation_idx := to_integer(mult_idx(31 downto 16));
                             temp_val     := resize(mult_val(31 downto 16), W_QUEENS);
 
-                            if temp_val >= N_QUEENS then
-                                temp_val := temp_val - to_unsigned(N_QUEENS, W_QUEENS);
-                            end if;
-
                             r_chromosome(mutation_idx) <= temp_val;
                             s_fitness <= "{worst_fit}";
 
@@ -315,17 +311,33 @@ fn generate_cell_file() -> Result<()> {
 }
 
 
+
 fn generate_cga_file(rows: i32, cols: i32) -> Result<()> {
     let mut file = File::create("vhdl/cga.vhd")?;
     let mut rng = rand::rng();
 
+    let perfect_fitness = "0".repeat(W_FITNESS as usize);
+    let padding_zeros = "0".repeat((8 - W_QUEENS) as usize);
+
     let mut signals = String::new();
+    let mut any_done_expr = String::new();
+    let mut mux_expr = String::from("    winning_chrom <= ");
+
     for r in 0..rows {
         for c in 0..cols {
             signals.push_str(&format!("    signal fit_{}_{} : unsigned({}-1 downto 0);\n", r, c, W_FITNESS));
             signals.push_str(&format!("    signal chrom_{}_{} : queen_chrom_t;\n", r, c));
+            signals.push_str(&format!("    signal done_{}_{} : std_logic;\n", r, c));
+
+            if r == 0 && c == 0 {
+                any_done_expr.push_str(&format!("done_{}_{}", r, c));
+            } else {
+                any_done_expr.push_str(&format!(" or done_{}_{}", r, c));
+            }
+            mux_expr.push_str(&format!("chrom_{}_{} when done_{}_{} = '1' else\n                     ", r, c, r, c));
         }
     }
+    mux_expr.push_str("(others => (others => '0'));\n");
 
     let mut instances = String::new();
     for r in 0..rows {
@@ -340,11 +352,13 @@ fn generate_cga_file(rows: i32, cols: i32) -> Result<()> {
                 "    cell_{r}_{c}: entity work.cell\n        generic map (\n            CELL_SEED => x\"{seed:08X}\"\n        )\n        port map (\n            clk => CLK100MHZ,\n            reset => reset_clean,\n            en_init => en_init,\n            en_crossover => en_crossover,\n            en_mutation => en_mutation,\n            north_fitness => fit_{n}_{c},\n            north_chrom   => chrom_{n}_{c},\n            south_fitness => fit_{s}_{c},\n            south_chrom   => chrom_{s}_{c},\n            east_fitness  => fit_{r}_{e},\n            east_chrom    => chrom_{r}_{e},\n            west_fitness  => fit_{r}_{w},\n            west_chrom    => chrom_{r}_{w},\n            fitness       => fit_{r}_{c},\n            chromosome    => chrom_{r}_{c}\n        );\n\n",
                 r=r, c=c, n=n, s=s, e=e, w=w, seed=seed
             ));
+
+            instances.push_str(&format!("    done_{}_{} <= '1' when fit_{}_{} = \"{}\" else '0';\n\n", r, c, r, c, perfect_fitness));
         }
     }
 
-    let padding_zeros = "0".repeat((8 - W_QUEENS) as usize);
-    let perfect_fitness = "0".repeat(W_FITNESS as usize);
+    instances.push_str(&format!("    any_done <= {};\n", any_done_expr));
+    instances.push_str(&format!("{}\n", mux_expr));
 
     let content = formatdoc! {r#"
         library IEEE;
@@ -386,6 +400,9 @@ fn generate_cga_file(rows: i32, cols: i32) -> Result<()> {
 
             signal cycle_counter : unsigned(31 downto 0) := (others => '0');
             signal is_computing  : std_logic := '0';
+
+            signal any_done      : std_logic;
+            signal winning_chrom : queen_chrom_t;
 
         {signals}
 
@@ -459,7 +476,7 @@ fn generate_cga_file(rows: i32, cols: i32) -> Result<()> {
 
                             when S_WAIT_CROSS =>
                                 if wait_cnt = 6 then
-                                    if fit_0_0 = "{perf_fit}" then
+                                    if any_done = '1' then
                                         tx_idx <= 0;
                                         is_computing <= '0';
                                         state <= S_DONE;
@@ -481,7 +498,7 @@ fn generate_cga_file(rows: i32, cols: i32) -> Result<()> {
 
                             when S_WAIT_MUT =>
                                 if wait_cnt = 2 then
-                                    if fit_0_0 = "{perf_fit}" then
+                                    if any_done = '1' then
                                         tx_idx <= 0;
                                         is_computing <= '0';
                                         state <= S_DONE;
@@ -498,9 +515,8 @@ fn generate_cga_file(rows: i32, cols: i32) -> Result<()> {
                                 end if;
 
                             when S_TX_LOAD =>
-
                                 if tx_idx < {n_queens} then
-                                    uart_data <= "{pad}" & std_logic_vector(chrom_0_0(tx_idx));
+                                    uart_data <= "{pad}" & std_logic_vector(winning_chrom(tx_idx mod {n_queens}));
                                 elsif tx_idx = {n_queens} then
                                     uart_data <= std_logic_vector(cycle_counter(31 downto 24));
                                 elsif tx_idx = {n_queens} + 1 then
@@ -541,7 +557,6 @@ fn generate_cga_file(rows: i32, cols: i32) -> Result<()> {
     signals = signals,
     instances = instances,
     w_fit = W_FITNESS,
-    perf_fit = perfect_fitness,
     pad = padding_zeros,
     n_queens = N_QUEENS
     };
