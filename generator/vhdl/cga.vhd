@@ -38,56 +38,99 @@ architecture Behavioral of cga is
     signal cycle_counter : unsigned(31 downto 0) := (others => '0');
     signal is_computing  : std_logic := '0';
 
+    signal any_done      : std_logic;
+    signal winning_chrom : queen_chrom_t;
+
     signal fit_0_0 : unsigned(6-1 downto 0);
     signal chrom_0_0 : queen_chrom_t;
+    signal done_0_0 : std_logic;
     signal fit_0_1 : unsigned(6-1 downto 0);
     signal chrom_0_1 : queen_chrom_t;
+    signal done_0_1 : std_logic;
     signal fit_0_2 : unsigned(6-1 downto 0);
     signal chrom_0_2 : queen_chrom_t;
+    signal done_0_2 : std_logic;
     signal fit_0_3 : unsigned(6-1 downto 0);
     signal chrom_0_3 : queen_chrom_t;
+    signal done_0_3 : std_logic;
     signal fit_0_4 : unsigned(6-1 downto 0);
     signal chrom_0_4 : queen_chrom_t;
+    signal done_0_4 : std_logic;
+    signal fit_0_5 : unsigned(6-1 downto 0);
+    signal chrom_0_5 : queen_chrom_t;
+    signal done_0_5 : std_logic;
     signal fit_1_0 : unsigned(6-1 downto 0);
     signal chrom_1_0 : queen_chrom_t;
+    signal done_1_0 : std_logic;
     signal fit_1_1 : unsigned(6-1 downto 0);
     signal chrom_1_1 : queen_chrom_t;
+    signal done_1_1 : std_logic;
     signal fit_1_2 : unsigned(6-1 downto 0);
     signal chrom_1_2 : queen_chrom_t;
+    signal done_1_2 : std_logic;
     signal fit_1_3 : unsigned(6-1 downto 0);
     signal chrom_1_3 : queen_chrom_t;
+    signal done_1_3 : std_logic;
     signal fit_1_4 : unsigned(6-1 downto 0);
     signal chrom_1_4 : queen_chrom_t;
+    signal done_1_4 : std_logic;
+    signal fit_1_5 : unsigned(6-1 downto 0);
+    signal chrom_1_5 : queen_chrom_t;
+    signal done_1_5 : std_logic;
     signal fit_2_0 : unsigned(6-1 downto 0);
     signal chrom_2_0 : queen_chrom_t;
+    signal done_2_0 : std_logic;
     signal fit_2_1 : unsigned(6-1 downto 0);
     signal chrom_2_1 : queen_chrom_t;
+    signal done_2_1 : std_logic;
     signal fit_2_2 : unsigned(6-1 downto 0);
     signal chrom_2_2 : queen_chrom_t;
+    signal done_2_2 : std_logic;
     signal fit_2_3 : unsigned(6-1 downto 0);
     signal chrom_2_3 : queen_chrom_t;
+    signal done_2_3 : std_logic;
     signal fit_2_4 : unsigned(6-1 downto 0);
     signal chrom_2_4 : queen_chrom_t;
+    signal done_2_4 : std_logic;
+    signal fit_2_5 : unsigned(6-1 downto 0);
+    signal chrom_2_5 : queen_chrom_t;
+    signal done_2_5 : std_logic;
     signal fit_3_0 : unsigned(6-1 downto 0);
     signal chrom_3_0 : queen_chrom_t;
+    signal done_3_0 : std_logic;
     signal fit_3_1 : unsigned(6-1 downto 0);
     signal chrom_3_1 : queen_chrom_t;
+    signal done_3_1 : std_logic;
     signal fit_3_2 : unsigned(6-1 downto 0);
     signal chrom_3_2 : queen_chrom_t;
+    signal done_3_2 : std_logic;
     signal fit_3_3 : unsigned(6-1 downto 0);
     signal chrom_3_3 : queen_chrom_t;
+    signal done_3_3 : std_logic;
     signal fit_3_4 : unsigned(6-1 downto 0);
     signal chrom_3_4 : queen_chrom_t;
+    signal done_3_4 : std_logic;
+    signal fit_3_5 : unsigned(6-1 downto 0);
+    signal chrom_3_5 : queen_chrom_t;
+    signal done_3_5 : std_logic;
     signal fit_4_0 : unsigned(6-1 downto 0);
     signal chrom_4_0 : queen_chrom_t;
+    signal done_4_0 : std_logic;
     signal fit_4_1 : unsigned(6-1 downto 0);
     signal chrom_4_1 : queen_chrom_t;
+    signal done_4_1 : std_logic;
     signal fit_4_2 : unsigned(6-1 downto 0);
     signal chrom_4_2 : queen_chrom_t;
+    signal done_4_2 : std_logic;
     signal fit_4_3 : unsigned(6-1 downto 0);
     signal chrom_4_3 : queen_chrom_t;
+    signal done_4_3 : std_logic;
     signal fit_4_4 : unsigned(6-1 downto 0);
     signal chrom_4_4 : queen_chrom_t;
+    signal done_4_4 : std_logic;
+    signal fit_4_5 : unsigned(6-1 downto 0);
+    signal chrom_4_5 : queen_chrom_t;
+    signal done_4_5 : std_logic;
 
 
 begin
@@ -107,7 +150,7 @@ begin
 
     cell_0_0: entity work.cell
         generic map (
-            CELL_SEED => x"64E80C9E"
+            CELL_SEED => x"116A8EBB"
         )
         port map (
             clk => CLK100MHZ,
@@ -121,15 +164,17 @@ begin
             south_chrom   => chrom_1_0,
             east_fitness  => fit_0_1,
             east_chrom    => chrom_0_1,
-            west_fitness  => fit_0_4,
-            west_chrom    => chrom_0_4,
+            west_fitness  => fit_0_5,
+            west_chrom    => chrom_0_5,
             fitness       => fit_0_0,
             chromosome    => chrom_0_0
         );
 
+    done_0_0 <= '1' when fit_0_0 = "000000" else '0';
+
     cell_0_1: entity work.cell
         generic map (
-            CELL_SEED => x"8FE81008"
+            CELL_SEED => x"B046805B"
         )
         port map (
             clk => CLK100MHZ,
@@ -149,9 +194,11 @@ begin
             chromosome    => chrom_0_1
         );
 
+    done_0_1 <= '1' when fit_0_1 = "000000" else '0';
+
     cell_0_2: entity work.cell
         generic map (
-            CELL_SEED => x"16317716"
+            CELL_SEED => x"5A6B257D"
         )
         port map (
             clk => CLK100MHZ,
@@ -171,9 +218,11 @@ begin
             chromosome    => chrom_0_2
         );
 
+    done_0_2 <= '1' when fit_0_2 = "000000" else '0';
+
     cell_0_3: entity work.cell
         generic map (
-            CELL_SEED => x"DCF5DCC2"
+            CELL_SEED => x"90068E7C"
         )
         port map (
             clk => CLK100MHZ,
@@ -193,9 +242,11 @@ begin
             chromosome    => chrom_0_3
         );
 
+    done_0_3 <= '1' when fit_0_3 = "000000" else '0';
+
     cell_0_4: entity work.cell
         generic map (
-            CELL_SEED => x"CCF55F43"
+            CELL_SEED => x"CBF9013F"
         )
         port map (
             clk => CLK100MHZ,
@@ -207,17 +258,43 @@ begin
             north_chrom   => chrom_4_4,
             south_fitness => fit_1_4,
             south_chrom   => chrom_1_4,
-            east_fitness  => fit_0_0,
-            east_chrom    => chrom_0_0,
+            east_fitness  => fit_0_5,
+            east_chrom    => chrom_0_5,
             west_fitness  => fit_0_3,
             west_chrom    => chrom_0_3,
             fitness       => fit_0_4,
             chromosome    => chrom_0_4
         );
 
+    done_0_4 <= '1' when fit_0_4 = "000000" else '0';
+
+    cell_0_5: entity work.cell
+        generic map (
+            CELL_SEED => x"590508CB"
+        )
+        port map (
+            clk => CLK100MHZ,
+            reset => reset_clean,
+            en_init => en_init,
+            en_crossover => en_crossover,
+            en_mutation => en_mutation,
+            north_fitness => fit_4_5,
+            north_chrom   => chrom_4_5,
+            south_fitness => fit_1_5,
+            south_chrom   => chrom_1_5,
+            east_fitness  => fit_0_0,
+            east_chrom    => chrom_0_0,
+            west_fitness  => fit_0_4,
+            west_chrom    => chrom_0_4,
+            fitness       => fit_0_5,
+            chromosome    => chrom_0_5
+        );
+
+    done_0_5 <= '1' when fit_0_5 = "000000" else '0';
+
     cell_1_0: entity work.cell
         generic map (
-            CELL_SEED => x"07006FB5"
+            CELL_SEED => x"1DF450ED"
         )
         port map (
             clk => CLK100MHZ,
@@ -231,15 +308,17 @@ begin
             south_chrom   => chrom_2_0,
             east_fitness  => fit_1_1,
             east_chrom    => chrom_1_1,
-            west_fitness  => fit_1_4,
-            west_chrom    => chrom_1_4,
+            west_fitness  => fit_1_5,
+            west_chrom    => chrom_1_5,
             fitness       => fit_1_0,
             chromosome    => chrom_1_0
         );
 
+    done_1_0 <= '1' when fit_1_0 = "000000" else '0';
+
     cell_1_1: entity work.cell
         generic map (
-            CELL_SEED => x"B5100FA1"
+            CELL_SEED => x"66507AB8"
         )
         port map (
             clk => CLK100MHZ,
@@ -259,9 +338,11 @@ begin
             chromosome    => chrom_1_1
         );
 
+    done_1_1 <= '1' when fit_1_1 = "000000" else '0';
+
     cell_1_2: entity work.cell
         generic map (
-            CELL_SEED => x"73EE161F"
+            CELL_SEED => x"B6FD7196"
         )
         port map (
             clk => CLK100MHZ,
@@ -281,9 +362,11 @@ begin
             chromosome    => chrom_1_2
         );
 
+    done_1_2 <= '1' when fit_1_2 = "000000" else '0';
+
     cell_1_3: entity work.cell
         generic map (
-            CELL_SEED => x"88BA42D3"
+            CELL_SEED => x"B48113AE"
         )
         port map (
             clk => CLK100MHZ,
@@ -303,9 +386,11 @@ begin
             chromosome    => chrom_1_3
         );
 
+    done_1_3 <= '1' when fit_1_3 = "000000" else '0';
+
     cell_1_4: entity work.cell
         generic map (
-            CELL_SEED => x"3AE727CB"
+            CELL_SEED => x"0DE0BB4A"
         )
         port map (
             clk => CLK100MHZ,
@@ -317,17 +402,43 @@ begin
             north_chrom   => chrom_0_4,
             south_fitness => fit_2_4,
             south_chrom   => chrom_2_4,
-            east_fitness  => fit_1_0,
-            east_chrom    => chrom_1_0,
+            east_fitness  => fit_1_5,
+            east_chrom    => chrom_1_5,
             west_fitness  => fit_1_3,
             west_chrom    => chrom_1_3,
             fitness       => fit_1_4,
             chromosome    => chrom_1_4
         );
 
+    done_1_4 <= '1' when fit_1_4 = "000000" else '0';
+
+    cell_1_5: entity work.cell
+        generic map (
+            CELL_SEED => x"B7425532"
+        )
+        port map (
+            clk => CLK100MHZ,
+            reset => reset_clean,
+            en_init => en_init,
+            en_crossover => en_crossover,
+            en_mutation => en_mutation,
+            north_fitness => fit_0_5,
+            north_chrom   => chrom_0_5,
+            south_fitness => fit_2_5,
+            south_chrom   => chrom_2_5,
+            east_fitness  => fit_1_0,
+            east_chrom    => chrom_1_0,
+            west_fitness  => fit_1_4,
+            west_chrom    => chrom_1_4,
+            fitness       => fit_1_5,
+            chromosome    => chrom_1_5
+        );
+
+    done_1_5 <= '1' when fit_1_5 = "000000" else '0';
+
     cell_2_0: entity work.cell
         generic map (
-            CELL_SEED => x"B5B15509"
+            CELL_SEED => x"78C45B47"
         )
         port map (
             clk => CLK100MHZ,
@@ -341,15 +452,17 @@ begin
             south_chrom   => chrom_3_0,
             east_fitness  => fit_2_1,
             east_chrom    => chrom_2_1,
-            west_fitness  => fit_2_4,
-            west_chrom    => chrom_2_4,
+            west_fitness  => fit_2_5,
+            west_chrom    => chrom_2_5,
             fitness       => fit_2_0,
             chromosome    => chrom_2_0
         );
 
+    done_2_0 <= '1' when fit_2_0 = "000000" else '0';
+
     cell_2_1: entity work.cell
         generic map (
-            CELL_SEED => x"0384E37C"
+            CELL_SEED => x"553D7913"
         )
         port map (
             clk => CLK100MHZ,
@@ -369,9 +482,11 @@ begin
             chromosome    => chrom_2_1
         );
 
+    done_2_1 <= '1' when fit_2_1 = "000000" else '0';
+
     cell_2_2: entity work.cell
         generic map (
-            CELL_SEED => x"9F95F2F8"
+            CELL_SEED => x"7216E5A4"
         )
         port map (
             clk => CLK100MHZ,
@@ -391,9 +506,11 @@ begin
             chromosome    => chrom_2_2
         );
 
+    done_2_2 <= '1' when fit_2_2 = "000000" else '0';
+
     cell_2_3: entity work.cell
         generic map (
-            CELL_SEED => x"0FB711E1"
+            CELL_SEED => x"2B405B7E"
         )
         port map (
             clk => CLK100MHZ,
@@ -413,9 +530,11 @@ begin
             chromosome    => chrom_2_3
         );
 
+    done_2_3 <= '1' when fit_2_3 = "000000" else '0';
+
     cell_2_4: entity work.cell
         generic map (
-            CELL_SEED => x"89C0182F"
+            CELL_SEED => x"BEC13AC9"
         )
         port map (
             clk => CLK100MHZ,
@@ -427,17 +546,43 @@ begin
             north_chrom   => chrom_1_4,
             south_fitness => fit_3_4,
             south_chrom   => chrom_3_4,
-            east_fitness  => fit_2_0,
-            east_chrom    => chrom_2_0,
+            east_fitness  => fit_2_5,
+            east_chrom    => chrom_2_5,
             west_fitness  => fit_2_3,
             west_chrom    => chrom_2_3,
             fitness       => fit_2_4,
             chromosome    => chrom_2_4
         );
 
+    done_2_4 <= '1' when fit_2_4 = "000000" else '0';
+
+    cell_2_5: entity work.cell
+        generic map (
+            CELL_SEED => x"09447550"
+        )
+        port map (
+            clk => CLK100MHZ,
+            reset => reset_clean,
+            en_init => en_init,
+            en_crossover => en_crossover,
+            en_mutation => en_mutation,
+            north_fitness => fit_1_5,
+            north_chrom   => chrom_1_5,
+            south_fitness => fit_3_5,
+            south_chrom   => chrom_3_5,
+            east_fitness  => fit_2_0,
+            east_chrom    => chrom_2_0,
+            west_fitness  => fit_2_4,
+            west_chrom    => chrom_2_4,
+            fitness       => fit_2_5,
+            chromosome    => chrom_2_5
+        );
+
+    done_2_5 <= '1' when fit_2_5 = "000000" else '0';
+
     cell_3_0: entity work.cell
         generic map (
-            CELL_SEED => x"6C5B9189"
+            CELL_SEED => x"E9F06FAB"
         )
         port map (
             clk => CLK100MHZ,
@@ -451,15 +596,17 @@ begin
             south_chrom   => chrom_4_0,
             east_fitness  => fit_3_1,
             east_chrom    => chrom_3_1,
-            west_fitness  => fit_3_4,
-            west_chrom    => chrom_3_4,
+            west_fitness  => fit_3_5,
+            west_chrom    => chrom_3_5,
             fitness       => fit_3_0,
             chromosome    => chrom_3_0
         );
 
+    done_3_0 <= '1' when fit_3_0 = "000000" else '0';
+
     cell_3_1: entity work.cell
         generic map (
-            CELL_SEED => x"87AD1167"
+            CELL_SEED => x"CCC620E8"
         )
         port map (
             clk => CLK100MHZ,
@@ -479,9 +626,11 @@ begin
             chromosome    => chrom_3_1
         );
 
+    done_3_1 <= '1' when fit_3_1 = "000000" else '0';
+
     cell_3_2: entity work.cell
         generic map (
-            CELL_SEED => x"32BA9E16"
+            CELL_SEED => x"5C0FEF87"
         )
         port map (
             clk => CLK100MHZ,
@@ -501,9 +650,11 @@ begin
             chromosome    => chrom_3_2
         );
 
+    done_3_2 <= '1' when fit_3_2 = "000000" else '0';
+
     cell_3_3: entity work.cell
         generic map (
-            CELL_SEED => x"F41502BA"
+            CELL_SEED => x"ACA78CFC"
         )
         port map (
             clk => CLK100MHZ,
@@ -523,9 +674,11 @@ begin
             chromosome    => chrom_3_3
         );
 
+    done_3_3 <= '1' when fit_3_3 = "000000" else '0';
+
     cell_3_4: entity work.cell
         generic map (
-            CELL_SEED => x"C8C170A7"
+            CELL_SEED => x"05DEF839"
         )
         port map (
             clk => CLK100MHZ,
@@ -537,17 +690,43 @@ begin
             north_chrom   => chrom_2_4,
             south_fitness => fit_4_4,
             south_chrom   => chrom_4_4,
-            east_fitness  => fit_3_0,
-            east_chrom    => chrom_3_0,
+            east_fitness  => fit_3_5,
+            east_chrom    => chrom_3_5,
             west_fitness  => fit_3_3,
             west_chrom    => chrom_3_3,
             fitness       => fit_3_4,
             chromosome    => chrom_3_4
         );
 
+    done_3_4 <= '1' when fit_3_4 = "000000" else '0';
+
+    cell_3_5: entity work.cell
+        generic map (
+            CELL_SEED => x"C8C34B12"
+        )
+        port map (
+            clk => CLK100MHZ,
+            reset => reset_clean,
+            en_init => en_init,
+            en_crossover => en_crossover,
+            en_mutation => en_mutation,
+            north_fitness => fit_2_5,
+            north_chrom   => chrom_2_5,
+            south_fitness => fit_4_5,
+            south_chrom   => chrom_4_5,
+            east_fitness  => fit_3_0,
+            east_chrom    => chrom_3_0,
+            west_fitness  => fit_3_4,
+            west_chrom    => chrom_3_4,
+            fitness       => fit_3_5,
+            chromosome    => chrom_3_5
+        );
+
+    done_3_5 <= '1' when fit_3_5 = "000000" else '0';
+
     cell_4_0: entity work.cell
         generic map (
-            CELL_SEED => x"0CBB2C16"
+            CELL_SEED => x"24D4A6F6"
         )
         port map (
             clk => CLK100MHZ,
@@ -561,15 +740,17 @@ begin
             south_chrom   => chrom_0_0,
             east_fitness  => fit_4_1,
             east_chrom    => chrom_4_1,
-            west_fitness  => fit_4_4,
-            west_chrom    => chrom_4_4,
+            west_fitness  => fit_4_5,
+            west_chrom    => chrom_4_5,
             fitness       => fit_4_0,
             chromosome    => chrom_4_0
         );
 
+    done_4_0 <= '1' when fit_4_0 = "000000" else '0';
+
     cell_4_1: entity work.cell
         generic map (
-            CELL_SEED => x"8FA887C6"
+            CELL_SEED => x"499CB3A5"
         )
         port map (
             clk => CLK100MHZ,
@@ -589,9 +770,11 @@ begin
             chromosome    => chrom_4_1
         );
 
+    done_4_1 <= '1' when fit_4_1 = "000000" else '0';
+
     cell_4_2: entity work.cell
         generic map (
-            CELL_SEED => x"2C9153CF"
+            CELL_SEED => x"77C593DD"
         )
         port map (
             clk => CLK100MHZ,
@@ -611,9 +794,11 @@ begin
             chromosome    => chrom_4_2
         );
 
+    done_4_2 <= '1' when fit_4_2 = "000000" else '0';
+
     cell_4_3: entity work.cell
         generic map (
-            CELL_SEED => x"8639BD95"
+            CELL_SEED => x"9B6F4096"
         )
         port map (
             clk => CLK100MHZ,
@@ -633,9 +818,11 @@ begin
             chromosome    => chrom_4_3
         );
 
+    done_4_3 <= '1' when fit_4_3 = "000000" else '0';
+
     cell_4_4: entity work.cell
         generic map (
-            CELL_SEED => x"DF937442"
+            CELL_SEED => x"AD79EFA9"
         )
         port map (
             clk => CLK100MHZ,
@@ -647,13 +834,72 @@ begin
             north_chrom   => chrom_3_4,
             south_fitness => fit_0_4,
             south_chrom   => chrom_0_4,
-            east_fitness  => fit_4_0,
-            east_chrom    => chrom_4_0,
+            east_fitness  => fit_4_5,
+            east_chrom    => chrom_4_5,
             west_fitness  => fit_4_3,
             west_chrom    => chrom_4_3,
             fitness       => fit_4_4,
             chromosome    => chrom_4_4
         );
+
+    done_4_4 <= '1' when fit_4_4 = "000000" else '0';
+
+    cell_4_5: entity work.cell
+        generic map (
+            CELL_SEED => x"ECDCEEA5"
+        )
+        port map (
+            clk => CLK100MHZ,
+            reset => reset_clean,
+            en_init => en_init,
+            en_crossover => en_crossover,
+            en_mutation => en_mutation,
+            north_fitness => fit_3_5,
+            north_chrom   => chrom_3_5,
+            south_fitness => fit_0_5,
+            south_chrom   => chrom_0_5,
+            east_fitness  => fit_4_0,
+            east_chrom    => chrom_4_0,
+            west_fitness  => fit_4_4,
+            west_chrom    => chrom_4_4,
+            fitness       => fit_4_5,
+            chromosome    => chrom_4_5
+        );
+
+    done_4_5 <= '1' when fit_4_5 = "000000" else '0';
+
+    any_done <= done_0_0 or done_0_1 or done_0_2 or done_0_3 or done_0_4 or done_0_5 or done_1_0 or done_1_1 or done_1_2 or done_1_3 or done_1_4 or done_1_5 or done_2_0 or done_2_1 or done_2_2 or done_2_3 or done_2_4 or done_2_5 or done_3_0 or done_3_1 or done_3_2 or done_3_3 or done_3_4 or done_3_5 or done_4_0 or done_4_1 or done_4_2 or done_4_3 or done_4_4 or done_4_5;
+    winning_chrom <= chrom_0_0 when done_0_0 = '1' else
+                     chrom_0_1 when done_0_1 = '1' else
+                     chrom_0_2 when done_0_2 = '1' else
+                     chrom_0_3 when done_0_3 = '1' else
+                     chrom_0_4 when done_0_4 = '1' else
+                     chrom_0_5 when done_0_5 = '1' else
+                     chrom_1_0 when done_1_0 = '1' else
+                     chrom_1_1 when done_1_1 = '1' else
+                     chrom_1_2 when done_1_2 = '1' else
+                     chrom_1_3 when done_1_3 = '1' else
+                     chrom_1_4 when done_1_4 = '1' else
+                     chrom_1_5 when done_1_5 = '1' else
+                     chrom_2_0 when done_2_0 = '1' else
+                     chrom_2_1 when done_2_1 = '1' else
+                     chrom_2_2 when done_2_2 = '1' else
+                     chrom_2_3 when done_2_3 = '1' else
+                     chrom_2_4 when done_2_4 = '1' else
+                     chrom_2_5 when done_2_5 = '1' else
+                     chrom_3_0 when done_3_0 = '1' else
+                     chrom_3_1 when done_3_1 = '1' else
+                     chrom_3_2 when done_3_2 = '1' else
+                     chrom_3_3 when done_3_3 = '1' else
+                     chrom_3_4 when done_3_4 = '1' else
+                     chrom_3_5 when done_3_5 = '1' else
+                     chrom_4_0 when done_4_0 = '1' else
+                     chrom_4_1 when done_4_1 = '1' else
+                     chrom_4_2 when done_4_2 = '1' else
+                     chrom_4_3 when done_4_3 = '1' else
+                     chrom_4_4 when done_4_4 = '1' else
+                     chrom_4_5 when done_4_5 = '1' else
+                     (others => (others => '0'));
 
 
 
@@ -710,7 +956,8 @@ begin
 
                     when S_WAIT_CROSS =>
                         if wait_cnt = 6 then
-                            if fit_0_0 = "000000" then
+                            -- ¡Freno global! Revisa si cualquier celda terminó
+                            if any_done = '1' then
                                 tx_idx <= 0;
                                 is_computing <= '0';
                                 state <= S_DONE;
@@ -732,7 +979,8 @@ begin
 
                     when S_WAIT_MUT =>
                         if wait_cnt = 2 then
-                            if fit_0_0 = "000000" then
+                            -- Reevaluación global tras la mutación
+                            if any_done = '1' then
                                 tx_idx <= 0;
                                 is_computing <= '0';
                                 state <= S_DONE;
@@ -749,9 +997,9 @@ begin
                         end if;
 
                     when S_TX_LOAD =>
-
                         if tx_idx < 10 then
-                            uart_data <= "0000" & std_logic_vector(chrom_0_0(tx_idx));
+                            -- Mod N_QUEENS evita el warning de inferencia fuera de rango en el sintetizador
+                            uart_data <= "0000" & std_logic_vector(winning_chrom(tx_idx mod 10));
                         elsif tx_idx = 10 then
                             uart_data <= std_logic_vector(cycle_counter(31 downto 24));
                         elsif tx_idx = 10 + 1 then
